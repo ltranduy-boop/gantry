@@ -6,6 +6,9 @@ const PORT = 3000;
 app.get("/", (req, res) => {
   res.send("Hello, web!");
 });
+app.get("/about", (req, res) => {
+  res.send("This is a web programming course.");
+});
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
