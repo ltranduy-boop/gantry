@@ -1,0 +1,616 @@
+# ================================================================
+# Dev Container — Compose file
+#
+# The `devcontainer` service is the main VS Code container.
+# All other services (postgres, redis, mongo, etc.) share the
+# same `gantry` network so they are reachable by hostname from
+# inside VS Code's terminal.
+#
+# Usage:
+#   • VS Code opens the `devcontainer` service automatically.
+#   • Start optional services:
+#       docker compose -f .devcontainer/compose.yml \
+#                      --profile postgres up -d
+#   • Or from inside the devcontainer:
+#       dc up -d postgres redis   (dc alias is set in bashrc)
+# ================================================================
+
+# ----------------------------------------------------------------
+# Shared network — every container resolves others by service name
+# ----------------------------------------------------------------
+networks:
+  gantry:
+    name: gantry
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+# ----------------------------------------------------------------
+# Named volumes
+# ----------------------------------------------------------------
+volumes:
+  postgres-data:
+  mongo-data:
+  redis-data:
+  mysql-data:
+  rabbitmq-data:
+  elasticsearch-data:
+  minio-data:
+  redpanda-data:
+  caddy-data:
+  caddy-config:
+  loki-data:
+  qdrant-data:
+  meilisearch-data:
+  keycloak-data:
+  nats-data:
+  devcontainer-bashhistory:
+
+    # ----------------------------------------------------------------
+    # Services
+    # ----------------------------------------------------------------
+services:
+
+  # --------------------------------------------------------------
+  # PRIMARY: VS Code Dev Container
+  # --------------------------------------------------------------
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Mount workspace source
+      - ..:/gantry:cached
+      # Docker socket (Docker-outside-of-Docker).
+      # Works on Mac, Linux, and Windows (Docker Desktop WSL2 backend)
+      # because Docker Desktop exposes the daemon at this same Unix socket
+      # path inside its Linux VM — no Windows-specific path needed.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persist shell history across rebuilds
+      - devcontainer-bashhistory:/commandhistory
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      HISTFILE: /commandhistory/.bash_history
+    networks:
+      gantry:
+        aliases:
+          - devcontainer
+    # Keep container running
+    command: sleep infinity
+    user: vscode
+
+  # --------------------------------------------------------------
+  # PostgreSQL  (profile: postgres)
+  # Connect: psql -h postgres -U dev -d devdb
+  # --------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    profiles: [ postgres, full ]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: devdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d devdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      gantry:
+        aliases:
+          - postgres
+          - db
+
+  # --------------------------------------------------------------
+  # MongoDB  (profile: mongo)
+  # Connect: mongosh mongodb://dev:devpassword@mongo:27017/devdb?authSource=admin
+  # --------------------------------------------------------------
+  mongo:
+    image: mongo:7
+    profiles: [ mongo, full ]
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: dev
+      MONGO_INITDB_ROOT_PASSWORD: devpassword
+      MONGO_INITDB_DATABASE: devdb
+    volumes:
+      - mongo-data:/data/db
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/mongo/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      gantry:
+        aliases:
+          - mongo
+          - mongodb
+
+  # --------------------------------------------------------------
+  # Redis  (profile: redis)
+  # Connect: redis-cli -h redis
+  # --------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    profiles: [ redis, full ]
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      gantry:
+        aliases:
+          - redis
+          - cache
+
+  # --------------------------------------------------------------
+  # MySQL  (profile: mysql)
+  # Connect: mysql -h mysql -u dev -pdevpassword devdb
+  # --------------------------------------------------------------
+  mysql:
+    image: mysql:8.3
+    profiles: [ mysql, full ]
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: devdb
+      MYSQL_USER: dev
+      MYSQL_PASSWORD: devpassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "dev", "-pdevpassword"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      gantry:
+        aliases:
+          - mysql
+
+  # --------------------------------------------------------------
+  # RabbitMQ  (profile: rabbitmq)
+  # Management UI: http://localhost:15672  (dev / devpassword)
+  # AMQP: amqp://dev:devpassword@rabbitmq:5672
+  # --------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    profiles: [ rabbitmq, full ]
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: dev
+      RABBITMQ_DEFAULT_PASS: devpassword
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      gantry:
+        aliases:
+          - rabbitmq
+          - mq
+
+  # --------------------------------------------------------------
+  # Elasticsearch  (profile: elastic)
+  # Connect: curl http://elastic:9200
+  # --------------------------------------------------------------
+  elasticsearch:
+    image: elasticsearch:8.13.0
+    profiles: [ elastic, full ]
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      ELASTIC_PASSWORD: devpassword
+      xpack.security.enabled: "false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      gantry:
+        aliases:
+          - elasticsearch
+          - elastic
+
+  # --------------------------------------------------------------
+  # Memcached  (profile: memcached)
+  # Connect: echo "stats" | nc memcached 11211
+  # --------------------------------------------------------------
+  memcached:
+    image: memcached:alpine
+    profiles: [ memcached, full ]
+    restart: unless-stopped
+    ports:
+      - "11211:11211"
+    networks:
+      gantry:
+        aliases:
+          - memcached
+
+  # --------------------------------------------------------------
+  # Mailpit — SMTP trap + web UI  (profile: mailpit)
+  # SMTP: mailpit:1025  |  Web UI: http://mailpit:8025
+  # --------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit
+    profiles: [ mailpit, full ]
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      gantry:
+        aliases:
+          - mailpit
+          - smtp
+
+  # --------------------------------------------------------------
+  # MinIO — S3-compatible object storage  (profile: minio)
+  # API: http://minio:9000  |  Console: http://minio:9001
+  # Credentials: dev / devpassword
+  # --------------------------------------------------------------
+  minio:
+    image: minio/minio
+    profiles: [ minio, full ]
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: dev
+      MINIO_ROOT_PASSWORD: devpassword
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      gantry:
+        aliases:
+          - minio
+          - s3
+
+  # --------------------------------------------------------------
+  # Redpanda — Kafka-compatible event streaming  (profile: redpanda)
+  # Kafka API: redpanda:9092
+  # Schema Registry: http://redpanda:8081
+  # HTTP Proxy: http://redpanda:8082
+  # Admin API: http://redpanda:9644
+  # Console UI: http://redpanda:9080
+  # --------------------------------------------------------------
+  redpanda:
+    image: redpandadata/redpanda:latest
+    profiles: [ redpanda, full ]
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    ports:
+      - "9092:9092"
+      - "8081:8081"
+      - "8082:8082"
+      - "9644:9644"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      gantry:
+        aliases:
+          - redpanda
+          - kafka
+
+  redpanda-console:
+    image: redpandadata/console:latest
+    profiles: [ redpanda, full ]
+    restart: unless-stopped
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/redpanda/console-config.yml:/etc/redpanda-console/config.yml:ro
+    environment:
+      CONFIG_FILEPATH: /etc/redpanda-console/config.yml
+    ports:
+      - "9080:8080"
+    networks:
+      gantry:
+        aliases:
+          - redpanda-console
+
+  # --------------------------------------------------------------
+  # Prometheus  (profile: observability)
+  # UI: http://localhost:9090
+  # --------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: [ observability, full ]
+    restart: unless-stopped
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      gantry:
+        aliases:
+          - prometheus
+
+  # --------------------------------------------------------------
+  # Grafana  (profile: observability)
+  # UI: http://localhost:3030  (admin / admin)
+  # --------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    profiles: [ observability, full ]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SERVER_HTTP_PORT: "3030"
+    ports:
+      - "3030:3030"
+    networks:
+      gantry:
+        aliases:
+          - grafana
+
+  # --------------------------------------------------------------
+  # Jaeger — distributed tracing  (profile: observability)
+  # UI: http://jaeger:16686
+  # OTLP gRPC: jaeger:4317  |  OTLP HTTP: jaeger:4318
+  # --------------------------------------------------------------
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    profiles: [ observability, full ]
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      gantry:
+        aliases:
+          - jaeger
+
+  # --------------------------------------------------------------
+  # Caddy  (profile: caddy)
+  # Automatic HTTPS reverse proxy — admin API at :2019
+  # Caddyfile: .devcontainer/services/caddy/Caddyfile
+  # NOTE: conflicts with nginx on ports 80/443 — run one or the other
+  # --------------------------------------------------------------
+  caddy:
+    image: caddy:alpine
+    profiles: [ caddy ]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      gantry:
+        aliases:
+          - caddy
+
+  # --------------------------------------------------------------
+  # Nginx reverse-proxy stub  (profile: nginx)
+  # Useful for testing upstream proxy scenarios
+  # --------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    profiles: [ nginx, full ]
+    restart: unless-stopped
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      gantry:
+        aliases:
+          - nginx
+          - proxy
+
+  # --------------------------------------------------------------
+  # Adminer — database web UI  (profile: adminer)
+  # UI: http://adminer:8888
+  # Supports: PostgreSQL, MySQL, MongoDB, SQLite, Elasticsearch
+  # --------------------------------------------------------------
+  adminer:
+    image: adminer
+    profiles: [ adminer, full ]
+    restart: unless-stopped
+    ports:
+      - "8888:8080"
+    networks:
+      gantry:
+        aliases:
+          - adminer
+
+  # --------------------------------------------------------------
+  # Loki — log aggregation  (profile: observability)
+  # Push logs: http://loki:3100/loki/api/v1/push
+  # Query (via Grafana datasource): http://loki:3100
+  # --------------------------------------------------------------
+  loki:
+    image: grafana/loki:latest
+    profiles: [ observability, full ]
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - loki-data:/loki
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+    ports:
+      - "3100:3100"
+    networks:
+      gantry:
+        aliases:
+          - loki
+
+  # --------------------------------------------------------------
+  # OpenTelemetry Collector  (profile: observability)
+  # OTLP gRPC: otelcol:4317  (host: localhost:14317)
+  # OTLP HTTP: otelcol:4318  (host: localhost:14318)
+  # Exports: traces → Jaeger, metrics → Prometheus, logs → Loki
+  # --------------------------------------------------------------
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:latest
+    profiles: [ observability, full ]
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/otelcol/config.yml:/etc/otelcol/config.yml:ro
+    ports:
+      - "14317:4317"
+      - "14318:4318"
+    depends_on:
+      - jaeger
+      - loki
+    networks:
+      gantry:
+        aliases:
+          - otelcol
+
+  # --------------------------------------------------------------
+  # Qdrant — vector database  (profile: vector)
+  # REST API: http://qdrant:6333
+  # gRPC:     qdrant:6334
+  # Dashboard: http://qdrant:6333/dashboard
+  # --------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    profiles: [ vector, full ]
+    restart: unless-stopped
+    volumes:
+      - qdrant-data:/qdrant/storage
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:6333/readyz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      gantry:
+        aliases:
+          - qdrant
+          - vector
+
+  # --------------------------------------------------------------
+  # Meilisearch — fast full-text search  (profile: meilisearch)
+  # API: http://meilisearch:7700
+  # Master key: devmasterkey
+  # --------------------------------------------------------------
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    profiles: [ meilisearch, full ]
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: devmasterkey
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilisearch-data:/meili_data
+    ports:
+      - "7700:7700"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:7700/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      gantry:
+        aliases:
+          - meilisearch
+          - search
+
+  # --------------------------------------------------------------
+  # NATS — lightweight pub/sub + JetStream  (profile: nats)
+  # Client: nats:4222  |  Monitoring: http://nats:8222
+  # --------------------------------------------------------------
+  nats:
+    image: nats:alpine
+    profiles: [ nats, full ]
+    restart: unless-stopped
+    command: ["--jetstream", "--store_dir=/data", "--http_port=8222"]
+    volumes:
+      - nats-data:/data
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      gantry:
+        aliases:
+          - nats
+
+  # --------------------------------------------------------------
+  # Keycloak — OIDC / OAuth2 identity provider  (profile: keycloak)
+  # Admin console: http://keycloak:8180  (admin / devpassword)
+  # OIDC discovery: http://keycloak:8180/realms/master/.well-known/openid-configuration
+  # --------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    profiles: [ keycloak, full ]
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: devpassword
+      KC_HTTP_PORT: "8180"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+    ports:
+      - "8180:8180"
+    networks:
+      gantry:
+        aliases:
+          - keycloak
+          - auth

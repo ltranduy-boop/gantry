@@ -1,0 +1,259 @@
+# ================================================================
+# Dev Container — Shell Enhancements
+# Sourced by /etc/bash.bashrc for all bash sessions
+# ================================================================
+
+# ---- Prompt (shows git branch + node version) ------------------
+__git_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null | sed 's/.*/ (\0)/'
+}
+__node_ver() {
+  node --version 2>/dev/null | sed 's/v//'
+}
+PS1='\[\e[0;36m\]\u\[\e[0m\]@\[\e[0;33m\]devcontainer\[\e[0m\]:\[\e[0;34m\]\w\[\e[0;35m\]$(__git_branch)\[\e[0m\] \[\e[0;32m\][node $(__node_ver)]\[\e[0m\]\n\$ '
+
+# ---- Persistent bash history -----------------------------------
+export HISTFILE=/commandhistory/.bash_history
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTCONTROL=ignoredups:erasedups
+shopt -s histappend
+
+# ---- Convenience aliases — Docker / Compose --------------------
+alias d='docker'
+alias dc='docker compose -f /gantry/.devcontainer/compose.yml --project-name "$(basename "$(echo "${LOCAL_WORKSPACE_FOLDER}" | tr "\\\\" "/")")_devcontainer"'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+alias dlog='docker logs -f'
+alias dex='docker exec -it'
+# Run rpk (Redpanda CLI) inside the redpanda container
+rpk() {
+  local container
+  container=$(docker ps --filter "label=com.docker.compose.service=redpanda" --format "{{.Names}}" | head -1)
+  if [[ -z "$container" ]]; then
+    echo "rpk: redpanda is not running" >&2
+    return 1
+  fi
+  docker exec -it "$container" rpk "$@"
+}
+
+dexb() {
+  local service="${1:?usage: dexb <service>}"
+  local container
+  container=$(docker ps --filter "label=com.docker.compose.service=${service}" --format "{{.Names}}" | head -1)
+  if [[ -z "$container" ]]; then
+    echo "dexb: no running container found for service '${service}'" >&2
+    return 1
+  fi
+  local shell
+  if docker exec "$container" which bash >/dev/null 2>&1; then
+    shell=bash
+  elif docker exec "$container" which sh >/dev/null 2>&1; then
+    shell=sh
+  else
+    echo "dexb: no shell (bash or sh) found in '${service}'" >&2
+    return 1
+  fi
+  docker exec -it "$container" "$shell"
+}
+# Translate /gantry volume paths to host paths for DooD bind-mounts.
+# The host daemon resolves -v paths on the host, not inside the container,
+# so /gantry must be swapped for the host workspace root before the call lands.
+docker() {
+  local -a args=()
+  local skip_next=0
+
+  _xlate_vol() {
+    local spec="$1"
+    # Named volumes and driver options have no leading / or ./ — pass through.
+    if [[ "$spec" != /* && "$spec" != ./* && "$spec" != ../* ]]; then
+      echo "$spec"; return
+    fi
+    local host_part="${spec%%:*}"
+    local container_rest="${spec#*:}"
+    [[ "$host_part" == "$spec" ]] && container_rest=""
+    host_part="$(realpath -m "$host_part" 2>/dev/null || echo "$host_part")"
+    host_part="${host_part/#\/gantry/${LOCAL_WORKSPACE_FOLDER}}"
+    if [[ -z "$container_rest" ]]; then
+      echo "$host_part"
+    else
+      echo "${host_part}:${container_rest}"
+    fi
+  }
+
+  for arg in "$@"; do
+    if [[ $skip_next -eq 1 ]]; then
+      args+=("$(_xlate_vol "$arg")")
+      skip_next=0
+    elif [[ "$arg" == "-v" || "$arg" == "--volume" ]]; then
+      args+=("$arg")
+      skip_next=1
+    elif [[ "$arg" == --volume=* ]]; then
+      args+=("--volume=$(_xlate_vol "${arg#--volume=}")")
+    else
+      args+=("$arg")
+    fi
+  done
+
+  command docker "${args[@]}"
+}
+
+alias dnet='docker network ls'
+alias dvol='docker volume ls'
+alias dprune='docker system prune -f'
+
+# Start individual services from anywhere
+dc-up()   { dc up -d --wait "$@"; }
+dc-down() { dc down "$@"; }
+dc-logs() { dc logs -f "$@"; }
+
+# ---- Node / npm aliases ----------------------------------------
+alias ni='npm install'
+alias nr='npm run'
+alias ns='npm start'
+alias nt='npm test'
+alias nrd='npm run dev'
+alias pni='pnpm install'
+alias pnr='pnpm run'
+
+# ---- Network debug shortcuts -----------------------------------
+alias myip='curl -s https://ifconfig.me'
+alias ports='ss -tulnp'
+alias listening='lsof -i -P -n | grep LISTEN'
+alias netwatch='watch -n1 ss -tulnp'
+
+# HTTP request helpers
+alias GET='curl -sS -X GET'
+alias POST='curl -sS -X POST -H "Content-Type: application/json"'
+alias PUT='curl -sS -X PUT -H "Content-Type: application/json"'
+alias DELETE='curl -sS -X DELETE'
+alias HEAD='curl -sS -I'
+
+# Pretty-print JSON from curl
+jcurl() { curl -sS "$@" | jq .; }
+
+# WebSocket quick test
+wstest() { websocat "$1"; }
+
+# ---- Database shortcuts ----------------------------------------
+alias psql-dev='psql -h postgres -U dev -d devdb'
+alias redis-dev='redis-cli -h redis'
+alias mongo-dev='mongosh "mongodb://dev:devpassword@mongo:27017/devdb?authSource=admin"'
+alias mysql-dev='mysql -h mysql -u dev -pdevpassword devdb'
+
+# ---- k6 load testing -------------------------------------------
+alias k6run='k6 run'
+
+# ---- Process / system ------------------------------------------
+alias ls='lsd --icon never --group-dirs first'
+alias ll='lsd --icon never -lAh --group-dirs first'
+alias la='lsd --icon never -A --group-dirs first'
+alias lt='lsd --icon never --tree --depth 1 --group-dirs first'
+alias lt1='lsd --icon never --tree --depth 1 --group-dirs first'
+alias lt2='lsd --icon never --tree --depth 2 --group-dirs first'
+alias lt3='lsd --icon never --tree --depth 3 --group-dirs first'
+alias grep='grep --color=auto'
+alias diff='diff --color=auto'
+alias cat='bat --paging=never 2>/dev/null || cat'
+
+# ---- Git wrapper — enforces identity before commit operations --
+git() {
+  # Find the first non-flag argument (the subcommand)
+  local subcommand=""
+  for arg in "$@"; do
+    [[ "$arg" != -* ]] && { subcommand="$arg"; break; }
+  done
+
+  case "$subcommand" in
+    commit|merge|rebase|cherry-pick|revert|tag|stash|am)
+      local _name _email
+      _name=$(command git config user.name 2>/dev/null)
+      _email=$(command git config user.email 2>/dev/null)
+      if [[ -z "$_name" || -z "$_email" ]]; then
+        echo ""
+        echo "  Git identity is not configured. Run:"
+        echo ""
+        echo '    git config --global user.name  "Your Name"'
+        echo '    git config --global user.email "you@example.com"'
+        echo ""
+        echo "  This persists until the container is rebuilt."
+        echo ""
+        return 1
+      fi
+      ;;
+  esac
+
+  command git "$@"
+}
+
+# ---- Git shortcuts ---------------------------------------------
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate -20'
+alias gd='git diff'
+
+# ---- Path additions --------------------------------------------
+export PATH="$PATH:/gantry/node_modules/.bin"
+export PATH="$HOME/.local/bin:$PATH"
+
+# ---- Node env defaults -----------------------------------------
+export NODE_ENV=development
+export FORCE_COLOR=1
+
+# ---- User customization ----------------------------------------
+# Edit /gantry/.bashrc.user to add your own aliases, variables,
+# and functions. Run `reload-env` to apply changes in the current
+# terminal without restarting the container.
+_USER_BASHRC=/gantry/.bashrc.user
+[[ -f "$_USER_BASHRC" ]] && source "$_USER_BASHRC"
+
+reload-env() {
+  if [[ -f /gantry/.bashrc.user ]]; then
+    source /gantry/.bashrc.user
+    echo "  Reloaded /gantry/.bashrc.user"
+  else
+    echo "  /gantry/.bashrc.user not found — nothing to reload."
+  fi
+  if [[ -f /gantry/.plugins/.loader.sh ]]; then
+    source /gantry/.plugins/.loader.sh
+    echo "  Reloaded plugin loader"
+  fi
+}
+
+# ---- Plugin manager --------------------------------------------
+plugin() {
+  bash /gantry/.devcontainer/scripts/plugin-manager.sh "$@"
+  local rc=$?
+  if [[ $rc -eq 0 && ( "$1" == "install" || "$1" == "remove" || "$1" == "update" || "$1" == "new" ) ]]; then
+    [[ -f /gantry/.plugins/.loader.sh ]] && source /gantry/.plugins/.loader.sh
+  fi
+  return $rc
+}
+
+# Load installed plugins
+[[ -f /gantry/.plugins/.loader.sh ]] && source /gantry/.plugins/.loader.sh
+
+# ---- Welcome banner --------------------------------------------
+_PLUGIN_COUNT=$(find /gantry/.plugins -maxdepth 1 -mindepth 1 -type d ! -name '.*' 2>/dev/null | wc -l | tr -d ' ')
+echo ""
+echo "  ╔══════════════════════════════════════════════════╗"
+echo "  ║                      Gantry                      ║"
+echo "  ╠══════════════════════════════════════════════════╣"
+printf "  ║  Node %-10s  npm %-10s  pnpm %-9s ║\n" \
+  "$(node -v 2>/dev/null)" \
+  "$(npm -v 2>/dev/null)" \
+  "$(pnpm -v 2>/dev/null)"
+printf "  ║  Docker %-36s     ║\n" "$(docker --version 2>/dev/null | cut -d' ' -f3 | tr -d ',')"
+printf "  ║  Plugins: %-39s  ║\n" "${_PLUGIN_COUNT} active  •  'plugin help'"
+echo "  ╠══════════════════════════════════════════════════╣"
+echo "  ║  Network: gantry (172.25.0.0/16)                 ║"
+echo "  ║  Type 'dc-up <service>' to start services        ║"
+echo "  ║  Services: postgres | mongo | redis | mysql      ║"
+echo "  ║            rabbitmq | elasticsearch | memcached  ║"
+echo "  ║            minio | redpanda | mailpit | adminer  ║"
+echo "  ║            nginx | caddy | prometheus | grafana  ║"
+echo "  ║            jaeger                                ║"
+echo "  ╚══════════════════════════════════════════════════╝"
+echo ""
+unset _PLUGIN_COUNT

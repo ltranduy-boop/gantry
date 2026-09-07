@@ -1,0 +1,15 @@
+# ================================================================
+# User Shell Customization — /gantry/.bashrc.user
+# ================================================================
+# Add your own aliases, environment variables, and functions here.
+#
+#   • Run `reload-env` in any open terminal to apply changes.
+#   • New terminals will load this file automatically.
+#   • This file is gitignored by default. Remove the .gitignore
+#     entry if you want to commit your customizations.
+# ================================================================
+
+# Examples (uncomment to use):
+# alias ll='ls -lAh --color=auto'
+# export MY_API_KEY=...
+# my-func() { echo "hello"; }
