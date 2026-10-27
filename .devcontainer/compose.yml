@@ -124,7 +124,7 @@ services:
       - mongo-data:/data/db
       - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer/services/mongo/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "27017:27017"
+      - "27018:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
