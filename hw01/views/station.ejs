@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Station Details</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <h1><%= station.name %></h1>
+    </header>
+    <ul>
+      <% readings.forEach(reading => { %>
+        <% if (reading.stationId === station.id) { %>
+          <li>Reading Value: <%= reading.value %></li>
+        <% } %>
+      <% }); %>
+    </ul>
+  </body>
+</html>

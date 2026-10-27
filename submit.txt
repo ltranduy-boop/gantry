@@ -1,0 +1,6 @@
+git config --global --add safe.directory D:/CS326/gantry-v07-14-2026/CS326_Group13
+git pull origin feat/ltranduy-boop
+git add <Ur file>
+git restore --staged <file-path>
+git commit -m "<Ur comment>"
+git push -u origin feat/ltranduy-boop

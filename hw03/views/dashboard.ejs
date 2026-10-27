@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title> Dashboard </title>
+    <link rel="stylesheet" href="/style.css" />
+    </head>
+    <body>
+      <main>
+        <h1>Dashboard</h1>
+        <p>Welcome to the dashboard!</p>
+      </main>
+        <h2>Submission form</h2>
+      <form id="submission-form">
+        <input type="text" name="cityId" placeholder="cityId" />
+        <input type="text" name="aqi" placeholder="aqi" />
+        <button type="submit">Submit</button>
+      </form>
+      <ul id="cities">
+        <% cities.forEach((city) => { %>
+          <li class="city-card">
+            <h3><%= city.name %>, <%= city.state %></h3>
+            <p>ID: <%= city.id %></p>
+          </li>
+        <% }); %>
+      </ul>
+
+      <ul id="readings">
+        <% readings.forEach((reading) => { %>
+          <li class="reading-card">
+            <h3>ID: <%= reading.id %></h3>
+            <p>City ID: <%= reading.cityId %></p>
+            <p>AQI: <%= reading.aqi %></p>
+          </li>
+        <% }); %>
+      </ul>
+      <script src="/app.js"></script>
+    </body>
+  </head>
+</html>

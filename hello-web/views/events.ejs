@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang = "en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/style.css">
+    <title><%= title %></title>
+  </head>
+  <body>
+    <header class="site-header">
+      <h1><%= title %></h1>
+    </header>
+    <ul>
+      <% if (events.length === 0) { %>
+        <p>No events!</p>
+      <% } else { %>
+        <% events.forEach(event => { %>
+          <li><%= event.title %></li>
+        <% }); %>
+      <% } %>
+    </ul>
+  </body>
+</html>

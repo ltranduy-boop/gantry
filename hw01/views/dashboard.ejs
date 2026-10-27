@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Dashboard</h1>
+    </header>
+    <ul>
+      <% stations.forEach(station => { %>
+        <li>Station: <%= station.name %> - Readings: <%= readings.reduce((count, reading) => reading.stationId === station.id ? count + 1 : count, 0) %></li>
+      <% }); %>
+    </ul>
+  </body>
+</html>

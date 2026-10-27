@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/style.css">
+    <meta
+      name="htmx-config"
+      content='{
+        "timeout": 5000,
+        "responseHandling": [
+          { "code": "204", "swap": false },
+          { "code": "[23]..", "swap": true },
+          { "code": "[45]..", "swap": true, "error": true, "target": "#status", "swapOverride": "innerHTML" }
+        ]
+      }'
+    >
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  </head>
+  <body
+    hx-on::send-error="document.querySelector('#status').textContent = 'Could not reach the server.'"
+    hx-on::timeout="document.querySelector('#status').textContent = 'The server did not answer within five seconds.'"
+  >
+    <%- include('partials/header') %>
+    <main>
+      <%- include('partials/entry-form') %>
+      <%- include('partials/status') %>
+      <ul id="entries">
+        <% entries.forEach((entry) => { %>
+          <%- include('partials/entry', { entry }) %>
+        <% }); %>
+      </ul>
+
+      <section class="classic-form">
+        <h2>Classic form (no JavaScript)</h2>
+        <form method="POST" action="/entries/classic">
+          <input type="text" name="title" placeholder="Title">
+          <input type="text" name="body" placeholder="Body">
+          <button type="submit">Add entry the classic way</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>
