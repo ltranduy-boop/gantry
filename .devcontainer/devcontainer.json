@@ -401,29 +401,6 @@
   "postStartCommand": "bash /gantry/.devcontainer/scripts/post-start.sh",
 
   // ----------------------------------------------------------------
-  // GitHub CLI auth — share host credentials into the container
-  //
-  // Mac/Linux: mounts ~/.config/gh so existing `gh auth login` on the
-  //            host is available automatically inside the container.
-  //
-  // Windows:   gh stores auth in %APPDATA%\GitHub CLI, not ~/.config/gh,
-  //            so the mount has no effect.  Instead set GH_TOKEN in your
-  //            host environment (System → Environment Variables) and it
-  //            will be forwarded here via remoteEnv.
-  // ----------------------------------------------------------------
-  "mounts": [
-    // gh auth config — shares existing `gh auth login` from the host.
-    // Uses HOME only (not USERPROFILE) to avoid double-concatenation on
-    // Windows machines where Git for Windows sets both variables.
-    // Windows users: ensure HOME=%USERPROFILE% is set (Git for Windows
-    // does this automatically), or use the GH_TOKEN fallback in remoteEnv.
-    "source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached",
-    // SSH keys — needed for git push over SSH (git@github.com remotes).
-    // post-start.sh normalises file permissions inside the container.
-    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
-  ],
-
-  // ----------------------------------------------------------------
   // Remote user
   // ----------------------------------------------------------------
   "remoteUser": "vscode",
@@ -431,6 +408,5 @@
     "DOCKER_BUILDKIT": "1",
     "COMPOSE_DOCKER_CLI_BUILD": "1",
     "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
-  },
-  "remoteEnv": { "GH_TOKEN": "${localEnv:GH_TOKEN}" }
+  }
 }
