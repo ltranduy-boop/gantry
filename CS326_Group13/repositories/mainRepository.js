@@ -27,7 +27,7 @@ const Credentials = mongoose.model("Credentials", credential_schema);
 
 export const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-export const getAll = async () => {
+export const getAll = async () =>
   /*
   try {
     const data = await readFile(DATA_FILE, "utf-8");
@@ -37,9 +37,18 @@ export const getAll = async () => {
   }
   */
   Member.find().lean();
+
+export const create = async (data) => (await Member.create(data)).toObject();
+
+export const deleteMember = async (name) =>
+  await Member.findOneAndDelete({ name: name });
+
+export const findMember = async (name) => {
+  console.log("mainRepo");
+  return await Member.findOne({ name: name });
 };
 
-export const getAllCredential = async () => {
+export const getAllCredential = async () =>
   /*
   try {
     const data = await readFile(CREDENTIAL, "utf-8");
@@ -49,7 +58,7 @@ export const getAllCredential = async () => {
   }
   */
   Credentials.find().lean();
-};
+
 export const findCredentialById = async (id) => {
   Credentials.findById(id).lean();
 };

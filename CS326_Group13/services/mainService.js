@@ -1,6 +1,9 @@
 import { Ok, Err } from "../result.js";
 import {
   getAll,
+  findMember,
+  create,
+  deleteMember,
   getAllCredential,
   findCredentialById,
   createCredential,
@@ -80,3 +83,13 @@ export const get_register = async (data) => {
 };
 
 export const get_member = async () => (await getAll()).map(toMemberDto);
+
+export const create_member = async (data) => {
+  console.log("MainService");
+  const Member = await findMember(data.name);
+  if (Member) {
+    return Err({ status: 400, message: "The name already existed" });
+  }
+  await create(data);
+  return Ok();
+};
