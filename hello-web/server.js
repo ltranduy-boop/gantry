@@ -1,78 +1,49 @@
 import express from "express";
-import { join } from "path";
+import morgan from "morgan";
+import mongoose from "mongoose";
+import cookieParser from "cookie-parser";
+import entriesRouter from "./routes/entries.js";
+import authRouter from "./routes/auth.js";
+import { attachUser } from "./middleware/attachUser.js";
 
 const app = express();
-const PORT = 3000;
-app.use(express.static("public"));
-app.use(function (req, res, next) {
-  console.log("Calling");
-  next();
-});
+const PORT = process.env.PORT || 3000;
+const SESSION_SECRET =
+  process.env.SESSION_SECRET || "dev-secret-change-in-production";
+
+await mongoose.connect(
+  process.env.MONGODB_URI ||
+    "mongodb://dev:devpassword@mongo:27017/devdb?authSource=admin",
+);
 
 app.set("view engine", "ejs");
 app.set("views", "views");
 
-app.get("/", (req, res) => {
-  res.sendFile(join(import.meta.dirname, "public", "lmao.html"));
-});
-app.get("/", (req, res) => {
-  res.sendFile(join(import.meta.dirname, "public", "index.html"));
-});
-app.get("/picture", (req, res) => {
-  res.sendFile(join(import.meta.dirname, "public", "6599197.jpg"));
+app.use(express.static("public"));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
 });
 
-app.get("/about", (req, res) => {
-  res.render("about", { title: "About" });
+app.use(morgan("dev"));
+app.use(cookieParser(SESSION_SECRET));
+app.use(attachUser);
+
+app.use(authRouter);
+app.use("/entries", entriesRouter);
+
+app.use((req, res) => {
+  res.status(404).send("Page not found.");
 });
 
-app.get("/entries", (req, res) => {
-  const entries = [
-    { title: req.query.a || "First note" },
-    { title: req.query.b || "Second note" },
-  ];
-  res.render("entries", { title: "My Notes", entries });
-});
-
-app.get("/events", (req, res) => {
-  let events = [];
-  if (!req.query.a && !req.query.b) {
-    events = [];
-  } else if (!req.query.a) {
-    events = [{ title: req.query.b }];
-  } else if (!req.query.b) {
-    events = [{ title: req.query.a }];
-  } else {
-    events = [{ title: req.query.a }, { title: req.query.b }];
-  }
-  res.render("events", { title: "My Events", events });
-});
-
-app.get("/search", (req, res) => {
-  const pair = {
-    term: req.query.term || "No search term provided",
-    limit: req.query.limit || "0",
-  };
-  res.json(pair);
-});
-
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-app.get("/slow", async (req, res) => {
-  await wait(5000);
-  res.send("Done waiting.");
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).send("Something went wrong.");
 });
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
-// work in progress
-// step one
-// step two
-// step three
-// checkpoint 1
-// checkpoint 2
-// checkpoint 3
-// BUG: off-by-one introduced here
-// checkpoint 4
-// checkpoint 5
