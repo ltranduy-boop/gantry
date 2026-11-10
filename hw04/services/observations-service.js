@@ -49,10 +49,10 @@ export const validateObservation = async (data) => {
   return Ok();
 };
 
-export const getObservation = async () =>
+export const listObservation = async () =>
   (await repo.getAll()).map(toObservationDto);
 
-export const addObservation = async (data) => {
+export const createObservation = async (data) => {
   const cond = await validateObservation(data);
   if (!cond.ok) {
     return cond;
@@ -71,7 +71,7 @@ export const updateObservation = async (id, data) => {
     return cond2.error;
   }
   const result = await repo.updateById(id, data);
-  if (!result.ok) {
+  if (!result) {
     return Err({
       status: 404,
       message:
@@ -87,7 +87,7 @@ export const deleteObservation = async (id) => {
     return Err({ status: 400, message: "Wierd id" });
   }
   const result = await repo.removeById(id);
-  if (!result.ok) {
+  if (!result) {
     return Err({
       status: 404,
       message:
@@ -102,14 +102,13 @@ export const confirmObservation = async (id) => {
   if (!cond) {
     return Err({ status: 400, message: "Wierd id" });
   }
-  const Observation = toObservationDto(await repo.findById(id));
-  if (!Observation) {
-    return Err({ status: 404, message: "Cannot find any object" });
-  }
-  Observation.confirmed = true;
 
-  const result = await repo.updateById(id, { confirmed: true }, { returnDocument: 'after' });
-  if (!result.ok) {
+  const result = await repo.updateById(
+    id,
+    { confirmed: true },
+    { returnDocument: "after" },
+  );
+  if (!result) {
     return Err({
       status: 404,
       message:

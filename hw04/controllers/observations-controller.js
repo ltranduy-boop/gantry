@@ -6,7 +6,7 @@ export const asyncHandler = (fn) => (req, res, next) => {
 };
 
 export const Read = async (req, res) => {
-  const result = await Service.getObservation();
+  const result = await Service.listObservation();
   if (!req.query.treeId) {
     return res.status(200).json(result);
   }
@@ -17,7 +17,7 @@ export const Read = async (req, res) => {
 };
 
 export const Create = async (req, res) => {
-  const result = await Service.addObservation(req.body);
+  const result = await Service.createObservation(req.body);
   if (!result.ok) {
     return res
       .status(result.error.status)
