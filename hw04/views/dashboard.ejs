@@ -25,9 +25,7 @@
     </form>
     <ul id="observations">
       <% observations.forEach((observation) => { %>
-        <li>
-          <h3><%= observation.treeId %>, <%= observation.phenophase %>, <%= observation.date%>, <%= observation.percent%></h3>
-        </li>
+        <%- include('partials/observation-row', { observation }) %>
       <% }); %>
     </ul>
     <script src="/app.js"></script>

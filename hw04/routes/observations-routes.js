@@ -11,5 +11,6 @@ router.post("/", asyncHandler(Controller.Create));
 router.get("/", asyncHandler(Controller.Read));
 router.put("/:id", asyncHandler(Controller.Update));
 router.delete("/:id", asyncHandler(Controller.Delete));
+router.put("/:id/confirm", asyncHandler(Controller.confirm));
 
 export default router;

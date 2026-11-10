@@ -1,4 +1,5 @@
 import * as Service from "../services/observations-service.js";
+import { isValidId } from "../repositories/observations-repository.js";
 
 export const asyncHandler = (fn) => (req, res, next) => {
   fn(req, res, next).catch(next);
@@ -43,4 +44,20 @@ export const Delete = async (req, res) => {
       .json({ error: result.error.message });
   }
   res.status(204).send();
+};
+
+export const confirm = async (req, res) => {
+  const { id } = req.params;
+  if (!isValidId(id)) {
+    res.status(400).send("id must be a valid id");
+    return;
+  }
+  const result = await Service.confirmObservation(id);
+  if (!result.ok) {
+    res.status(result.error.status).send(result.error.message);
+    return;
+  }
+  res
+    .status(200)
+    .render("partials/observation-row", { observation: result.value });
 };

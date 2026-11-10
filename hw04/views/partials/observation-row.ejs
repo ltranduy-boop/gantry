@@ -1,0 +1,14 @@
+<li>
+  <h3><%= observation.treeId %>, <%= observation.phenophase %>, <%= observation.date%>, <%= observation.percent%></h3>
+
+  <% if (observation.confirmed) { %>
+    <span class="badge">Confirmed</span>
+  <% } else { %>
+    <button
+      hx-put="/observations/<%= observation.id %>/confirm"
+      hx-target="closest li"
+      hx-swap="outerHTML"
+    >Confirm</button>
+  <% } %>
+
+</li>

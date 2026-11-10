@@ -7,11 +7,40 @@ async function fetchJSON(url, options) {
   if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
   return body;
 }
+
+const makeButton = (className, label, attributes = {}) => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.textContent = label;
+
+  for (const [name, value] of Object.entries(attributes)) {
+    button.setAttribute(name, value);
+  }
+
+  return button;
+};
+
 function buildItem(observation) {
-  const li = document.createElement("li");
-  const p = document.createElement("p");
-  p.textContent = `treeId: ${observation.treeId}, phenophase: ${observation.phenophase}, date: ${observation.date}, percent: ${observation.percent}`;
-  li.append(p);
+  const item = document.createElement("li");
+  item.dataset.id = observation.id;
+
+  const h3 = document.createElement('h3');
+  h3.textContent = `treeId: ${observation.treeId}, phenophase: ${observation.phenophase}, date: ${observation.date}, percent: ${observation.percent}`;
+  let confimation;
+  if (observation.confirmed) {
+    confirmation = document.createElement("span");
+    confirmation.className = "badge";
+    confirmation.textContent = "Confirmed";
+  } else{
+    confirmation = makeButton('confirm-btn', 'Confirm', {
+      'hx-put': `/observations/${observation.id}/confirm`;
+      'hx-target': 'closest li',
+      'hx-swap': 'outerHTML',
+      'hw-disabled-elt': 'this',
+    });
+  }
+  item.append(h3,confirmation);
   return li;
 }
 
@@ -31,7 +60,9 @@ form.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     });
-    list.append(buildItem(saved));
+    const item = buildItem(saved);
+    list.append(item);
+    htmx.process(item);
     form.reset();
   } catch (error) {
     alert(`Your observation was not saved. ${error.message}`);

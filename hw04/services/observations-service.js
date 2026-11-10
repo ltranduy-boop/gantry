@@ -96,3 +96,25 @@ export const deleteObservation = async (id) => {
   }
   return Ok(toObservationDto(result));
 };
+
+export const confirmObservation = async (id) => {
+  const cond1 = repo.isValidId(id);
+  if (!cond) {
+    return Err({ status: 400, message: "Wierd id" });
+  }
+  const Observation = toObservationDto(await repo.findById());
+  if (!Observation) {
+    return Err({ status: 404, message: "Cannot find any object" });
+  }
+  Observation.confirmed = true;
+
+  const result = await repo.updateById(id, Observation);
+  if (!result.ok) {
+    return Err({
+      status: 404,
+      message:
+        "id does not match with any object in MongoDB or data has a problem",
+    });
+  }
+  return Ok(result);
+};
