@@ -51,7 +51,7 @@ const trees = [
 import express from "express";
 import mongoose from "mongoose";
 import observationRouter from "./routes/observations-routes.js";
-import { getObservation } from "./services/observations-service.js";
+import { listObservation } from "./services/observations-service.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -73,7 +73,9 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-  res.status(200).json({ message: "Harvard Forest Phenology Tracker", version: "1.0" });
+  res
+    .status(200)
+    .json({ message: "Harvard Forest Phenology Tracker", version: "1.0" });
 });
 
 app.get("/status", (req, res) => {
@@ -94,7 +96,7 @@ app.get("/trees/:treeId", (req, res) => {
 });
 
 app.get("/dashboard", async (req, res) => {
-  const observations = await getObservation();
+  const observations = await listObservation();
   res.status(200).render("dashboard", { trees, observations });
 });
 

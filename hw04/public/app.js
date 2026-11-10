@@ -40,7 +40,13 @@ function buildItem(observation) {
       "hw-disabled-elt": "this",
     });
   }
-  item.append(h3, confirmation);
+  const deleteButton = makeButton("delete-btn", "Delete", {
+    "hx-delete": `/observations/${observation.id}`,
+    "hx-target": "closest li",
+    "hx-swap": "outerHTML",
+    "hw-disabled-elt": "this",
+  });
+  item.append(h3, confirmation, deleteButton);
   return item;
 }
 

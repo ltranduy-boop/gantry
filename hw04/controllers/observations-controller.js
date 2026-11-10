@@ -10,7 +10,7 @@ export const Read = async (req, res) => {
   if (!req.query.treeId) {
     return res.status(200).json(result);
   }
-  const result2 = result.find(
+  const result2 = result.filter(
     (observation) => observation.treeId === req.query.treeId,
   );
   res.status(200).json(result2);
@@ -43,7 +43,7 @@ export const Delete = async (req, res) => {
       .status(result.error.status)
       .json({ error: result.error.message });
   }
-  res.status(204).send();
+  res.status(200).send();
 };
 
 export const confirm = async (req, res) => {

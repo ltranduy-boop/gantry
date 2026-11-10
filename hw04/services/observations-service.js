@@ -9,16 +9,9 @@ export const validateObservation = async (data) => {
   if (
     !data.treeId ||
     !data.date ||
-    data.percent === undefined ||
     !data.phenophase
   ) {
     return Err({ status: 400, message: "Lacked of required field" });
-  }
-  if (data.percent < 0 || data.percent > 100) {
-    return Err({
-      status: 400,
-      message: "weird percent",
-    });
   }
   const cond = repo.PHENOPHASES.some(
     (phenophase) => phenophase === data.phenophase,
@@ -86,15 +79,8 @@ export const deleteObservation = async (id) => {
   if (!cond) {
     return Err({ status: 400, message: "Wierd id" });
   }
-  const result = await repo.removeById(id);
-  if (!result) {
-    return Err({
-      status: 404,
-      message:
-        "id does not match with any object in MongoDB or data has a problem",
-    });
-  }
-  return Ok(toObservationDto(result));
+  await repo.removeById(id);
+  return Ok();
 };
 
 export const confirmObservation = async (id) => {
