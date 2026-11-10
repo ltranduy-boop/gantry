@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title> Dashboard </title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Dashboard</h1>
+      <p>Welcome to the dashboard!</p>
+    </main>
+      <h2>Submission form</h2>
+      <li>
+        <% trees.forEach((tree) => { %>
+          <h3><%= tree.treeId %></h3>
+        <% }); %>
+      </li>
+    <form id="submission-form">
+      <input type="text" name="treeId" placeholder="treeId" />
+      <input type="text" name="phenophase" placeholder="phenophase" />
+      <input type="text" name="date" placeholder="date" />
+      <input type="text" name="percent" placeholder="percent" />
+      <button type="submit">Submit</button>
+    </form>
+    <ul id="observations">
+      <% observations.forEach((observation) => { %>
+        <li>
+          <h3><%= observation.treeId %>, <%= observation.phenophase %>, <%= observation.date%>, <%= observation.percent%></h3>
+        </li>
+      <% }); %>
+    </ul>
+    <script src="/app.js"></script>
+  </body>
+</html>
