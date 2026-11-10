@@ -73,13 +73,11 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-  res.status(200).json({ message: "Welcome" });
+  res.status(200).json({ message: "Harvard Forest Phenology Tracker", version: "1.0" });
 });
 
 app.get("/status", (req, res) => {
-  res
-    .status(200)
-    .json({ message: "Harvard Forest Phenology Tracker", version: "1.0" });
+  res.status(200).json({ status: "ok", uptime: process.uptime() });
 });
 
 app.get("/trees", (req, res) => {
