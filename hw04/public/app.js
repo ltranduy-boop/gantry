@@ -9,8 +9,8 @@ async function fetchJSON(url, options) {
 }
 
 const makeButton = (className, label, attributes = {}) => {
-  const button = document.createElement('button');
-  button.type = 'button';
+  const button = document.createElement("button");
+  button.type = "button";
   button.className = className;
   button.textContent = label;
 
@@ -25,23 +25,23 @@ function buildItem(observation) {
   const item = document.createElement("li");
   item.dataset.id = observation.id;
 
-  const h3 = document.createElement('h3');
+  const h3 = document.createElement("h3");
   h3.textContent = `treeId: ${observation.treeId}, phenophase: ${observation.phenophase}, date: ${observation.date}, percent: ${observation.percent}`;
   let confimation;
   if (observation.confirmed) {
     confirmation = document.createElement("span");
     confirmation.className = "badge";
     confirmation.textContent = "Confirmed";
-  } else{
-    confirmation = makeButton('confirm-btn', 'Confirm', {
-      'hx-put': `/observations/${observation.id}/confirm`;
-      'hx-target': 'closest li',
-      'hx-swap': 'outerHTML',
-      'hw-disabled-elt': 'this',
+  } else {
+    confirmation = makeButton("confirm-btn", "Confirm", {
+      "hx-put": `/observations/${observation.id}/confirm`,
+      "hx-target": "closest li",
+      "hx-swap": "outerHTML",
+      "hw-disabled-elt": "this",
     });
   }
-  item.append(h3,confirmation);
-  return li;
+  item.append(h3, confirmation);
+  return item;
 }
 
 form.addEventListener("submit", async (event) => {

@@ -98,17 +98,17 @@ export const deleteObservation = async (id) => {
 };
 
 export const confirmObservation = async (id) => {
-  const cond1 = repo.isValidId(id);
+  const cond = repo.isValidId(id);
   if (!cond) {
     return Err({ status: 400, message: "Wierd id" });
   }
-  const Observation = toObservationDto(await repo.findById());
+  const Observation = toObservationDto(await repo.findById(id));
   if (!Observation) {
     return Err({ status: 404, message: "Cannot find any object" });
   }
   Observation.confirmed = true;
 
-  const result = await repo.updateById(id, Observation);
+  const result = await repo.updateById(id, { confirmed: true }, { returnDocument: 'after' });
   if (!result.ok) {
     return Err({
       status: 404,
