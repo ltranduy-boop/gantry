@@ -79,6 +79,10 @@ export const deleteObservation = async (id) => {
   if (!cond) {
     return Err({ status: 400, message: "Wierd id" });
   }
+  const Observation = await repo.findById(id);
+  if(!Observation){
+    return Err({status:404, message: "Hm, must be a wind! No object with this id be found to delete!"});
+  }
   await repo.removeById(id);
   return Ok();
 };

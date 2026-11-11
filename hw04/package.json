@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "build:css": "tailwindcss -i ./src/input.css -o ./public/style.css"
   },
   "keywords": [],
   "author": "",

@@ -9,6 +9,11 @@
       hx-target="closest li"
       hx-swap="outerHTML"
     >Confirm</button>
+    <button
+      hx-delete="/observations/<%= observation.id %>"
+      hx-target="closest li"
+      hx-swap="outerHTML"
+    >Delete</button>
   <% } %>
 
 </li>
