@@ -69,13 +69,14 @@ export const get_register = async (data) => {
     FullName,
     Major,
     role: "admin",
-    _id: new_student.value._id,
+    _id: new_student.value.id,
   };
   /*
   all_users.push(full_results);
   await saveCredential(all_users);
   */
   const Newuser = NewUser(await mainRepository.createCredential(full_results));
+  console.log(Newuser.id);
   return Ok(Newuser);
 };
 
